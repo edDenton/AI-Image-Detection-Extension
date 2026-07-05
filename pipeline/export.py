@@ -18,7 +18,7 @@ def execute_onnx_runtime(model, example_input):
     print(f"Sample input: {onnx_inputs}")
 
     ort_session = onnxruntime.InferenceSession(
-        "./AI_image_classifier_model.onnx", providers=["CPUExecutionProvider"]
+        "../extension/model/AI_image_classifier_model.onnx", providers=["CPUExecutionProvider"]
     )
 
     onnxruntime_input = {input_arg.name: input_value for input_arg, input_value in

@@ -177,6 +177,7 @@ def main():
 
         for t in thresholds_to_test:
             metrics = compute_metrics(all_labels_combined, all_scores_combined, t)
+            print(f"overall_t{int(t * 100)}_ACC: {accuracy:.4f}")
             mlflow.log_metrics({
                 f"overall_t{int(t * 100)}_{k}": v
                 for k, v in metrics.items()
