@@ -1,0 +1,15 @@
+train:
+  architecture: mobilenet_v3_small
+  pretrained: true
+  freeze_backbone: true
+  unfreeze_epoch: 4
+  epochs: 20
+  batch_size: 32
+  learning_rate: 0.01
+  fine_tune_lr: 0.005
+  num_workers: 8
+  seed: 42
+
+data:
+  processed_path: data/processed
+  checkpoint_path: models/checkpoints

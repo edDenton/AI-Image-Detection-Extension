@@ -1,0 +1,12 @@
+mlflow~=3.13.0
+pandas~=2.3.3
+Pillow~=12.2.0
+scikit-learn~=1.9.0
+pyyaml~=6.0.3
+tqdm~=4.68.1
+kagglehub~=1.0.1
+numpy~=2.4.6
+onnx~=1.22.0
+onnxruntime~=1.27.0
+torch~=2.11.0+cu128
+torchvision~=0.26.0+cu128
