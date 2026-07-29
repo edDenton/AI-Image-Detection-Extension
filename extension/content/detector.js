@@ -1,8 +1,24 @@
 
 (() => {
-    const TIME_ON_SCREEN_MS = 500
+    const TIME_ON_SCREEN_MS = 500;
+    const MODEL_IMAGE_SIZE = 224;
+
+    const IMAGE_NET_MEAN = [0.485, 0.456, 0.406];
+    const IMAGE_NET_STD = [0.229, 0.224, 0.225];
+
     const processedImages = new WeakSet();
     const processingTimers = new WeakMap();
+
+    ort.env.wasm.wasmPaths = chrome.runtime.getURL("lib/ort/");
+
+    let modelSession = null;
+    function getSession(){
+        if (!modelSession) {
+            const modelURL = chrome.runtime.getURL("model/AI_image_classifier_model.onnx")
+            modelSession = ort.InferenceSession.create(modelURL);
+        }
+        return modelSession;
+    }
 
     let ID = 0;
     function getID(){
@@ -52,16 +68,91 @@
 
         const id = getID();
 
-        // TODO: Handle response by resizing/normalizing image and passing image to model
-        const response = chrome.runtime.sendMessage({
+        chrome.runtime.sendMessage({
             type: "FETCH_IMAGE",
             id,
             url: src
-        });
+        },
+            (response) => {
+                if (chrome.runtime.lastError) {
+                    console.warn("sendMessage failed for ", id, chrome.runtime.lastError.message);
+                    return;
+                }
+                if (!response) {
+                    console.warn("No response for ", id);
+                    return;
+                }
+                if (response.type === "FETCH_IMAGE_ERROR") {
+                    console.warn("Failed to fetch image: ", response.error);
+                    return;
+                }
+                if (response.type === "FETCH_IMAGE_SUCCESS") {
+                    handleImageBytes(response, img);
+                }
+            }
+        );
 
         iObserver.unobserve(img);
     }
 
+    async function handleImageBytes(resp, img) {
+
+        let bitmap;
+        try {
+            const blob = new Blob([resp.data], {type: resp.mimeType});
+            bitmap = await createImageBitmap(blob);
+        } catch (err) {
+            console.warn("Failed to turn image bytes into a bitmap: ", err);
+            return;
+        }
+
+        try {
+            const tensor = processToTensor(bitmap);
+            const prediction = await modelPredict(tensor);
+
+            // TODO: Pass prediction to overlay.js to display
+
+        } catch (err) {
+            console.warn("Failed to classify image: ", err);
+        } finally {
+            bitmap.close();
+        }
+    }
+
+    function processToTensor(bitmap) {
+        const canvas = new OffscreenCanvas(MODEL_IMAGE_SIZE, MODEL_IMAGE_SIZE);
+        const context = canvas.getContext("2d");
+
+        context.drawImage(bitmap, 0, 0, MODEL_IMAGE_SIZE, MODEL_IMAGE_SIZE);
+
+        const { data } = context.getImageData(0, 0, MODEL_IMAGE_SIZE, MODEL_IMAGE_SIZE);
+        const pixelCount = MODEL_IMAGE_SIZE * MODEL_IMAGE_SIZE;
+
+        const tensor = new Float32Array(3 * pixelCount);
+
+        for (let i = 0; i < pixelCount; i++) {
+            const red = data[i * 4] / 255;
+            const green = data[i * 4] / 255;
+            const blue = data[i * 4] / 255;
+
+            tensor[i] = (red - IMAGE_NET_MEAN[0]) / IMAGE_NET_STD[0];
+            tensor[pixelCount + i] = (green - IMAGE_NET_MEAN[1]) / IMAGE_NET_STD[1];
+            tensor[2 * pixelCount + i] = (blue - IMAGE_NET_MEAN[2]) / IMAGE_NET_STD[2];
+        }
+
+        return new ort.Tensor("float32", tensor, [1, 3, MODEL_IMAGE_SIZE, MODEL_IMAGE_SIZE]);
+    }
+
+    async function modelPredict(tensor) {
+        const session = await getSession();
+
+        const inputName = session.inputNames[0];
+        const outputName = session.outputNames[0];
+
+        const results = await session.run({[inputName]: tensor});
+        return results[outputName].data[0]; // results gives [fake, real] but we only care about fake probability
+    }
+    
     function watchImage(img) {
         if (processedImages.has(img)) return;
 
@@ -95,5 +186,10 @@
         mutations.forEach(scanMutations);
     });
 
-    scanForImages(document.body)
-})
+    mObserver.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+
+    scanForImages(document.body);
+})()
