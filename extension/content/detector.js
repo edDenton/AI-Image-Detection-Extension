@@ -108,9 +108,15 @@
 
         try {
             const tensor = processToTensor(bitmap);
-            const prediction = await modelPredict(tensor);
+            const fakePrediction = await modelPredict(tensor);
 
-            // TODO: Pass prediction to overlay.js to display
+            img.dispatchEvent(new CustomEvent("AI-detection-prediction", {
+                bubbles: true,
+                detail: {
+                    img,
+                    fakePrediction: fakePrediction,
+                }
+            }));
 
         } catch (err) {
             console.warn("Failed to classify image: ", err);
@@ -132,8 +138,8 @@
 
         for (let i = 0; i < pixelCount; i++) {
             const red = data[i * 4] / 255;
-            const green = data[i * 4] / 255;
-            const blue = data[i * 4] / 255;
+            const green = data[i * 4 + 1] / 255;
+            const blue = data[i * 4 + 2] / 255;
 
             tensor[i] = (red - IMAGE_NET_MEAN[0]) / IMAGE_NET_STD[0];
             tensor[pixelCount + i] = (green - IMAGE_NET_MEAN[1]) / IMAGE_NET_STD[1];
