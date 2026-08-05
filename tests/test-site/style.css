@@ -1,0 +1,21 @@
+/* Code primarily comes from https://jsmastery.com/blogs/infinite-scroll-with-javascript-the-step-by-step-guide */
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.header {
+  font-size: 32px;
+  color: black;
+  text-align: center;
+  font-family: Verdana, sans-serif;
+}
+
+img {
+  width: 500px;
+  height: 500px;
+  margin: 10px;
+  object-fit: cover;
+}
