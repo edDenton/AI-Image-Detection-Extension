@@ -43,3 +43,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     return true;
 });
+
+chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === "IMAGE_FLAGGED") {
+        chrome.storage.session.get("flaggedCount", (result) => {
+            const current = result.flaggedCount ?? 0;
+            chrome.storage.session.set({ flaggedCount: current + 1 });
+        });
+    }
+});

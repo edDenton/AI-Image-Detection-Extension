@@ -26,6 +26,9 @@
 
         img.classList.add(tier);
 
+        // Sends message to service_worker.js to update the count of flagged AI images for popup.js to show in popup
+        chrome.runtime.sendMessage({ type: "IMAGE_FLAGGED" });
+
         const confidence = Math.round(fakeProb * 100);
         img.title = `Possibly AI-generated (${confidence}% confidence)`;
     }

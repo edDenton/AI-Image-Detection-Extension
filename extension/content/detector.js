@@ -68,6 +68,7 @@
 
         const id = getID();
 
+        // Sends message to service_worker.js to fetch the image
         chrome.runtime.sendMessage({
             type: "FETCH_IMAGE",
             id,
