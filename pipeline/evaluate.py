@@ -143,7 +143,7 @@ def main():
 
     init_mlflow(base_dir=base_dir)
 
-    with open("../models/mlflow_run_id.txt", "r") as f:
+    with open("../models/v1/mlflow_run_id.txt", "r") as f:
         run_id = f.read().strip()
 
     with mlflow.start_run(run_id=run_id):

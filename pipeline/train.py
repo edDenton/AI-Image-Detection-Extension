@@ -25,10 +25,10 @@ def load_params(params_path="../params.yaml"):
 
 
 def init_mlflow(base_dir):
-    db_path = base_dir / "models" / "mlflow.db"
+    db_path = base_dir / "models" / "v1" / "mlflow.db"
     mlflow.set_tracking_uri(f"sqlite:///{db_path}")
 
-    artifact_path = base_dir / "models" / "mlruns"
+    artifact_path = base_dir / "models" / "v1" / "mlruns"
     experiment_name = "AI-Image Detector"
     if mlflow.get_experiment_by_name(experiment_name) is None:
         mlflow.create_experiment(
@@ -228,7 +228,7 @@ def main():
     mlflow.enable_system_metrics_logging()
 
     with mlflow.start_run():
-        run_id_path = base_dir / "models" / "mlflow_run_id.txt"
+        run_id_path = base_dir / "models" / "v1" / "mlflow_run_id.txt"
         with open(run_id_path, "w") as f:
             f.write(f"{mlflow.active_run().info.run_id}")
 

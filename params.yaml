@@ -12,4 +12,4 @@ train:
 
 data:
   processed_path: data/processed
-  checkpoint_path: models/checkpoints
+  checkpoint_path: models/v1/checkpoints
