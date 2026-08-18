@@ -1,0 +1,17 @@
+.model-level-low {
+    box-sizing: border-box;
+    outline-offset: -3px;
+    outline: 3px solid #f5c518
+}
+
+.model-level-medium {
+    box-sizing: border-box;
+    outline-offset: -3px;
+    outline: 3px solid #ff8c00
+}
+
+.model-level-high {
+    box-sizing: border-box;
+    outline-offset: -3px;
+    outline: 3px solid #ff0000
+}

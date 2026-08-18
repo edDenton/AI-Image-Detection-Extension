@@ -1,0 +1,25 @@
+body {
+    width: 220px;
+    font-family: sans-serif;
+    text-align: center;
+    padding: 16px;
+    margin: 0;
+}
+
+#extension-name {
+    font-size: 16px;
+    margin: 0 0 12px 0;
+}
+
+#count-label {
+    font-size: 13px;
+    color: #000000;
+    margin: 0 0 4px 0;
+}
+
+#count-value {
+    font-size: 32px;
+    font-weight: bold;
+    margin: 0;
+    color: #000000;
+}

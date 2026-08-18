@@ -1,0 +1,65 @@
+{
+  "manifest_version": 3,
+  "name": "AI Image Detection",
+  "description": "Flags AI-generated images on social media using an on-device ML model.",
+  "version": "1.0",
+  "icons": {
+    "16": "images/icon.png",
+    "48": "images/icon.png",
+    "128": "images/icon.png"
+  },
+
+  "permissions": [
+    "storage"
+  ],
+
+  "background": {
+    "service_worker": "background/service_worker.js"
+  },
+
+  "host_permissions": [
+    "*://*.x.com/*",
+    "*://*.instagram.com/*",
+    "*://*.facebook.com/*",
+    "*://*.reddit.com/*"
+  ],
+
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.x.com/*",
+        "*://*.instagram.com/*",
+        "*://*.facebook.com/*",
+        "*://*.reddit.com/*"
+      ],
+      "js": ["content/overlay.js", "content/detector.js", "lib/dist/*"],
+      "css": ["content/overlay.css"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "images/icon.png",
+      "48": "images/icon.png",
+      "128": "images/icon.png"
+    }
+  },
+
+  "web_accessible_resources": [
+    {
+      "resources": ["model/*", "lib/dist/*"],
+      "matches": [
+        "*://*.x.com/*",
+        "*://*.instagram.com/*",
+        "*://*.facebook.com/*",
+        "*://*.reddit.com/*"
+      ]
+    }
+  ],
+
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+  }
+}
