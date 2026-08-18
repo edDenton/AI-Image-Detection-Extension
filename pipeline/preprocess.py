@@ -7,7 +7,6 @@ import pandas as pd
 from PIL import Image
 from pathlib import Path
 from train import load_params
-import shutil
 
 
 def allocate(gen_counts, total):
@@ -86,56 +85,56 @@ def split_data(images):
 
 
 def create_processed(raw_path, metadata_path, processed_path):
-    # config = load_params()
-    # train_config = config["train"]
-    # random.seed(train_config["seed"])
-    #
+    config = load_params()
+    train_config = config["train"]
+    random.seed(train_config["seed"])
+
     metadata = pd.read_csv(metadata_path)
-    #
-    # # Loop through each category, make sure there's an even amount of real and fake images for the category
-    # for category in metadata["category"].unique():
-    #     curr_category_df = metadata[metadata["category"] == category]
-    #
-    #     real = curr_category_df[curr_category_df["target"] == 0]
-    #     fake = curr_category_df[curr_category_df["target"] != 0]
-    #
-    #     # Take the min to make sure one type of image doesn't outweigh the other
-    #     total = min(len(real), len(fake))
-    #
-    #     real_imgs = get_images(real, total)
-    #     fake_imgs = get_images(fake, total)
-    #
-    #     real_train, real_val, real_test = split_data(real_imgs)
-    #     fake_train, fake_val, fake_test = split_data(fake_imgs)
-    #
-    #     # Add all imgs to the processed directory grouped by train, val, and test by category
-    #     for gen, path in real_train:
-    #         src = raw_path / gen / path
-    #         resize_img(src, processed_path / "train" / "real" / Path(path).name)
-    #
-    #     for gen, path in real_val:
-    #         src = raw_path / gen / path
-    #         resize_img(src, processed_path / "val" / "real" / Path(path).name)
-    #
-    #     for gen, path in real_test:
-    #         src = raw_path / gen / path
-    #         resize_img(src, processed_path / "test" / category / "real" / Path(path).name)
-    #
-    #     for gen, path in fake_train:
-    #         src = raw_path / gen / path
-    #         resize_img(src, processed_path / "train" / "fake" / Path(path).name)
-    #
-    #     for gen, path in fake_val:
-    #         src = raw_path / gen / path
-    #         resize_img(src, processed_path / "val" / "fake" / Path(path).name)
-    #
-    #     for gen, path in fake_test:
-    #         src = raw_path / gen / path
-    #         resize_img(src, processed_path / "test" / category / "fake" / Path(path).name)
-    #
-    #     print(f"{category} is finished")
-    #
-    # print("All categories are finished")
+
+    # Loop through each category, make sure there's an even amount of real and fake images for the category
+    for category in metadata["category"].unique():
+        curr_category_df = metadata[metadata["category"] == category]
+
+        real = curr_category_df[curr_category_df["target"] == 0]
+        fake = curr_category_df[curr_category_df["target"] != 0]
+
+        # Take the min to make sure one type of image doesn't outweigh the other
+        total = min(len(real), len(fake))
+
+        real_imgs = get_images(real, total)
+        fake_imgs = get_images(fake, total)
+
+        real_train, real_val, real_test = split_data(real_imgs)
+        fake_train, fake_val, fake_test = split_data(fake_imgs)
+
+        # Add all imgs to the processed directory grouped by train, val, and test by category
+        for gen, path in real_train:
+            src = raw_path / gen / path
+            resize_img(src, processed_path / "train" / "real" / Path(path).name)
+
+        for gen, path in real_val:
+            src = raw_path / gen / path
+            resize_img(src, processed_path / "val" / "real" / Path(path).name)
+
+        for gen, path in real_test:
+            src = raw_path / gen / path
+            resize_img(src, processed_path / "test" / category / "real" / Path(path).name)
+
+        for gen, path in fake_train:
+            src = raw_path / gen / path
+            resize_img(src, processed_path / "train" / "fake" / Path(path).name)
+
+        for gen, path in fake_val:
+            src = raw_path / gen / path
+            resize_img(src, processed_path / "val" / "fake" / Path(path).name)
+
+        for gen, path in fake_test:
+            src = raw_path / gen / path
+            resize_img(src, processed_path / "test" / category / "fake" / Path(path).name)
+
+        print(f"{category} is finished")
+
+    print("All categories are finished")
 
     # Add all the generators unused in training to the testing dataset to see how the model performs against unseen generators
     used_gens = set(metadata["generator"].unique())
