@@ -11,7 +11,7 @@ print("ArtiFact started")
 path = kagglehub.dataset_download("awsaf49/artifact-dataset", output_dir="../data/raw/ArtiFact")
 print("ArtiFact finished, path to dataset is: ", path)
 
-print("CIFAKE started")
-path = kagglehub.dataset_download("birdy654/cifake-real-and-ai-generated-synthetic-images", output_dir="../data/raw/CIFAKE")
-print("CIFAKE finished, path to dataset is: ", path)
+# print("CIFAKE started")
+# path = kagglehub.dataset_download("birdy654/cifake-real-and-ai-generated-synthetic-images", output_dir="../data/raw/CIFAKE")
+# print("CIFAKE finished, path to dataset is: ", path)
 
