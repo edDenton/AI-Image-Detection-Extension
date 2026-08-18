@@ -2,137 +2,163 @@
 
 @author: Edward Denton
 """
-import random as rand
+import random
 import pandas as pd
 from PIL import Image
 from pathlib import Path
+from train import load_params
+import shutil
 
 
-# Process and separate ArtiFact
-# Split is 70-15-15 (train-val-test) for all models being used in training
-# CycleGAN, LaMa, StyleGAN2, Taming Transformer, VQ Diffusion saved purely for testing
-def split_artifact(raw_path, processed_path, val_fraction=0.15, test_fraction=0.15, seed=42):
-    rand.seed(seed)
+def allocate(gen_counts, total):
+    allocated_counts = {}
 
-    print("ArtiFact is being processed")
-    held_out_models = ["cycle_gan", "lama", "stylegan2", "taming_transformer", "vq_diffusion"]
-    raw_path = Path(raw_path)
+    gens = list(gen_counts.keys())
+    share = total // len(gens)
+
+    for gen in gens:
+        allocated_counts[gen] = min(gen_counts[gen], share)
+
+    difference = total - sum(allocated_counts.values())
+
+    for gen in gens:
+        if difference <= 0:
+            break
+
+        spare = gen_counts[gen] - allocated_counts[gen]
+        extra = min(spare, difference)
+        allocated_counts[gen] += extra
+        difference -= extra
+
+    return allocated_counts
+
+
+def get_images(label_df, total):
+    gen_dict = {}
+
+    # Get the number of imgs for each generator
+    for gen in label_df["generator"].unique():
+        paths = list(label_df.loc[label_df["generator"] == gen, "image_path"])
+        gen_dict[gen] = paths
+
+    # generator: count of imgs it has in its dataset
+    counts = {g: len(paths) for g, paths in gen_dict.items()}
+
+    # Get an even amount of each generator unless one can't match the even amount
+    allocated_counts = allocate(counts, total)
+
+    selected = []
+    for gen, take_n in allocated_counts.items():
+        paths = gen_dict[gen]
+        random.shuffle(paths)
+        for path in paths[:take_n]:
+            selected.append((gen, path))
+
+    return selected
+
+
+def split_data(images):
+    gen_dict = {}
+    TRAIN_FRACTION = 0.7
+    VAL_FRACTION = 0.15
+
+    # We are splitting by generator within the data to make sure we get an even amount of each generator in training
+    for generator, path in images:
+        gen_dict.setdefault(generator, []).append(path)
+
+    train, val, test = [], [], []
+
+    for gen, paths in gen_dict.items():
+        random.shuffle(paths)
+
+        val_count = int(len(paths) * VAL_FRACTION)
+        train_count = int(len(paths) * TRAIN_FRACTION)
+
+        train_paths = paths[:train_count]
+        val_paths = paths[train_count:val_count + train_count]
+        test_paths = paths[val_count + train_count:]
+
+        train.extend((gen, path) for path in train_paths)
+        val.extend((gen, path) for path in val_paths)
+        test.extend((gen, path) for path in test_paths)
+
+    return train, val, test
+
+
+def create_processed(raw_path, metadata_path, processed_path):
+    # config = load_params()
+    # train_config = config["train"]
+    # random.seed(train_config["seed"])
+    #
+    metadata = pd.read_csv(metadata_path)
+    #
+    # # Loop through each category, make sure there's an even amount of real and fake images for the category
+    # for category in metadata["category"].unique():
+    #     curr_category_df = metadata[metadata["category"] == category]
+    #
+    #     real = curr_category_df[curr_category_df["target"] == 0]
+    #     fake = curr_category_df[curr_category_df["target"] != 0]
+    #
+    #     # Take the min to make sure one type of image doesn't outweigh the other
+    #     total = min(len(real), len(fake))
+    #
+    #     real_imgs = get_images(real, total)
+    #     fake_imgs = get_images(fake, total)
+    #
+    #     real_train, real_val, real_test = split_data(real_imgs)
+    #     fake_train, fake_val, fake_test = split_data(fake_imgs)
+    #
+    #     # Add all imgs to the processed directory grouped by train, val, and test by category
+    #     for gen, path in real_train:
+    #         src = raw_path / gen / path
+    #         resize_img(src, processed_path / "train" / "real" / Path(path).name)
+    #
+    #     for gen, path in real_val:
+    #         src = raw_path / gen / path
+    #         resize_img(src, processed_path / "val" / "real" / Path(path).name)
+    #
+    #     for gen, path in real_test:
+    #         src = raw_path / gen / path
+    #         resize_img(src, processed_path / "test" / category / "real" / Path(path).name)
+    #
+    #     for gen, path in fake_train:
+    #         src = raw_path / gen / path
+    #         resize_img(src, processed_path / "train" / "fake" / Path(path).name)
+    #
+    #     for gen, path in fake_val:
+    #         src = raw_path / gen / path
+    #         resize_img(src, processed_path / "val" / "fake" / Path(path).name)
+    #
+    #     for gen, path in fake_test:
+    #         src = raw_path / gen / path
+    #         resize_img(src, processed_path / "test" / category / "fake" / Path(path).name)
+    #
+    #     print(f"{category} is finished")
+    #
+    # print("All categories are finished")
+
+    # Add all the generators unused in training to the testing dataset to see how the model performs against unseen generators
+    used_gens = set(metadata["generator"].unique())
 
     for model in raw_path.iterdir():
-        if model.name == ".complete":
+        if model.name == ".complete" or model.name in used_gens:
             continue
 
-        elif model.is_dir() and model.name not in held_out_models:
-            for file in model.iterdir():
-                if file.is_file() and file.name == "metadata.csv":
-                    df = pd.read_csv(file)
+        metadata_file = model / "metadata.csv"
 
-                    # target == 0 is real, any non-zero value is AI-generated
-                    real_images = [Path(p) for p in df["image_path"][df["target"] == 0]]
-                    print(f"{model.name} real images: {len(real_images)}")
-                    if len(real_images) > 0:
-                        rand.shuffle(real_images)
-                        val_count = int(val_fraction * len(real_images))
-                        test_count = int(test_fraction * len(real_images))
+        model_df = pd.read_csv(metadata_file)
 
-                        val_images = real_images[:val_count]
-                        test_images = real_images[val_count:test_count + val_count]
-                        train_images = real_images[test_count + val_count:]
+        real_imgs = [Path(p) for p in model_df["image_path"][model_df["target"] == 0]]
+        for img in real_imgs:
+            resize_img(raw_path / model / img, processed_path / "test" / model.name / "real" / Path(img).name)
 
-                        for img in val_images:
-                            resize_img(raw_path / model.name / img, processed_path / "val" / "real" / img.name)
+        fake_imgs = [Path(p) for p in model_df["image_path"][model_df["target"] != 0]]
+        for img in fake_imgs:
+            resize_img(raw_path / model / img, processed_path / "test" / model.name / "fake" / Path(img).name)
 
-                        for img in train_images:
-                            resize_img(raw_path / model.name / img, processed_path / "train" / "real" / img.name)
-
-                        for img in test_images:
-                            resize_img(raw_path / model.name / img,
-                                       processed_path / "test" / model.name / "real" / img.name)
-
-                    # target == 0 is real, any non-zero value is AI-generated
-                    fake_images = [Path(p) for p in df["image_path"][df["target"] != 0]]
-                    print(f"{model.name} fake images: {len(fake_images)}")
-                    if len(fake_images) > 0:
-                        rand.shuffle(fake_images)
-                        val_count = int(val_fraction * len(fake_images))
-                        test_count = int(test_fraction * len(fake_images))
-
-                        val_images = fake_images[:val_count]
-                        test_images = fake_images[val_count:test_count + val_count]
-                        train_images = fake_images[test_count + val_count:]
-
-                        for img in val_images:
-                            resize_img(raw_path / model.name / img, processed_path / "val" / "fake" / img.name)
-
-                        for img in train_images:
-                            resize_img(raw_path / model.name / img, processed_path / "train" / "fake" / img.name)
-
-                        for img in test_images:
-                            resize_img(raw_path / model.name / img,
-                                       processed_path / "test" / model.name / "fake" / img.name)
-
-        elif model.is_dir() and model.name in held_out_models:
-            for file in model.iterdir():
-                if file.is_file() and file.name == "metadata.csv":
-                    df = pd.read_csv(file)
-
-                    # target == 0 is real, any non-zero value is AI-generated
-                    real_images = [Path(p) for p in df["image_path"][df["target"] == 0]]
-                    print(f"{model.name} real images: {len(real_images)}")
-                    if len(real_images) > 0:
-                        rand.shuffle(real_images)
-
-                        for img in real_images:
-                            resize_img(raw_path / model.name / img,
-                                       processed_path / "test" / model.name / "real" / img.name)
-
-                    # target == 0 is real, any non-zero value is AI-generated
-                    fake_images = [Path(p) for p in df["image_path"][df["target"] != 0]]
-                    print(f"{model.name} fake images: {len(fake_images)}")
-                    if len(fake_images) > 0:
-                        rand.shuffle(fake_images)
-
-                        for img in fake_images:
-                            resize_img(raw_path / model.name / img,
-                                       processed_path / "test" / model.name / "fake" / img.name)
-
-        print(f"{model.name} is done")
+        print(f"{model.name} is finished")
 
     print("ArtiFact has been processed")
-    return
-
-
-# Process and separate CIFAKE
-# Using the provided split, train will be divided into 80-20 train-val
-# test will be left alone for purely testing
-# def split_cifake(raw_path, processed_path, val_fraction=0.20, seed=42):
-#     rand.seed(seed)
-#
-#     print("CIFAKE is being processed")
-#     for label, folder in [("real", "REAL"), ("fake", "FAKE")]:
-#         test_images = list((raw_path / "test" / folder).glob("*.jpg"))
-#         rand.shuffle(test_images)
-#
-#         # Put CIFAKE images in their own folder, so we can keep track off how our model performs
-#         # on specific generators
-#         for img in test_images:
-#             resize_img(img, processed_path / "test" / "cifake" / label / img.name)
-#
-#         train_images = list((raw_path / "train" / folder).glob("*.jpg"))
-#         rand.shuffle(train_images)
-#
-#         val_count = int(val_fraction * len(train_images))
-#         val_images = train_images[:val_count]
-#         train_images = train_images[val_count:]
-#
-#         for img in train_images:
-#             resize_img(img, processed_path / "train" / label / img.name)
-#
-#         for img in val_images:
-#             resize_img(img, processed_path / "val" / label / img.name)
-#
-#     print("CIFAKE has been processed")
-#     return
 
 
 def resize_img(img_path, output_path, size=(224, 224)):
@@ -154,11 +180,11 @@ def main():
     # base_dir makes sure we can run this file from anywhere, __file__ gives path to preprocess.py (this file)
     # and .parent will travel up the project root similar to cd ../../
     base_dir = Path(__file__).resolve().parent.parent
-    raw_path = base_dir / "data" / "raw"
+    raw_path = base_dir / "data" / "raw" / "ArtiFact"
+    metadata_path = base_dir / "data" / "sorted" / "full_metadata.csv"
     processed_path = base_dir / "data" / "processed"
 
-    split_artifact(raw_path / "ArtiFact", processed_path)
-    # split_cifake(raw_path / "CIFAKE", processed_path), no longer using CIFAKE currently because of the img size
+    create_processed(raw_path, metadata_path, processed_path)
 
 
 if __name__ == '__main__':

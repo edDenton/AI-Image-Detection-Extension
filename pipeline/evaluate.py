@@ -153,31 +153,34 @@ def main():
         all_labels_combined = []
         all_scores_combined = []
 
-        for generator in test_path.iterdir():
-            loader = get_dataloaders(
-                generator_path=test_path / generator.name,
-                batch_size=train_config["batch_size"],
-                num_workers=train_config["num_workers"]
-            )
+        for source in test_path.iterdir():
+            with mlflow.start_run(run_name=f"eval_{source.name}", nested=True):
+                mlflow.set_tag("source", str(source))
 
-            scores, labels = test(model, loader, device, generator.name)
+                loader = get_dataloaders(
+                    generator_path=test_path / source.name,
+                    batch_size=train_config["batch_size"],
+                    num_workers=train_config["num_workers"]
+                )
 
-            for t in thresholds_to_test:
-                predictions = (scores < t).astype(int)
-                accuracy = accuracy_score(y_true=labels, y_pred=predictions)
+                scores, labels = test(model, loader, device, source.name)
 
-                print(f"{generator.name}_t{int(t * 100)}_ACC: {accuracy:.4f}")
-                mlflow.log_metric(f"{generator.name}_t{int(t * 100)}_ACC", accuracy)
+                for t in thresholds_to_test:
+                    predictions = (scores < t).astype(int)
+                    accuracy = accuracy_score(y_true=labels, y_pred=predictions)
 
-            all_labels_combined.append(labels)
-            all_scores_combined.append(scores)
+                    print(f"t{int(t * 100)}_ACC: {accuracy:.4f}")
+                    mlflow.log_metric(f"t{int(t * 100)}_ACC", accuracy)
+
+                all_labels_combined.append(labels)
+                all_scores_combined.append(scores)
 
         all_labels_combined = np.concatenate(all_labels_combined)
         all_scores_combined = np.concatenate(all_scores_combined)
 
         for t in thresholds_to_test:
             metrics = compute_metrics(all_labels_combined, all_scores_combined, t)
-            print(f"overall_t{int(t * 100)}_ACC: {accuracy:.4f}")
+            print(f"overall_t{int(t * 100)}_ACC: {metrics["accuracy"]:.4f}")
             mlflow.log_metrics({
                 f"overall_t{int(t * 100)}_{k}": v
                 for k, v in metrics.items()
