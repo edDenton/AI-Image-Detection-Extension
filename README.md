@@ -1,0 +1,18 @@
+# AI-Image Detection - Chrome Extension
+
+## Overview
+Detecting AI images compared to real images has been getting increasingly more difficult. For those who do not know the signs of an AI image, this can be incredibly damaging leading people to believe fake images as truth. I attempted to make a model which would run as a Chrome extension to help flag images as users scroll on popular social media sites to fight back against misinformation spreading on the internet. Everything found in this repository is my attempt at helping to make unaware users more informed of potential AI imagery on their social media feeds.
+
+This project was focused on giving me an opportunity to learn more about common machine learning libraries, such as PyTorch and MLFlow, while also giving me the opportunity to learn more JavaScript. I was able to use MLFlow to learn where my model was struggling and attempt to make improvements to it in the data pipeline. After implementing my own minimal convolutional neural network for classifying, using PyTorch to accomplish the same task in a different context was incredibly satisfying.
+
+## Pipeline
+
+The entire pipeline starts with training the model. For this, I used the ArtiFact dataset (https://www.kaggle.com/datasets/awsaf49/artifact-dataset/data) which contains both real images and fake images. CIFAKE was originally considered but given the image size and quality, I decided it would make my model's performance worse. After running ingest.py, ArtiFact will be downloaded to a separate directory named data/. The final model didn't use the full_metadata.csv file created by organize.py because performance was much worse when split by category rather than generator. AFter the model was made with train.py, evaluate.py to get MLFlow statistics, and export.py to turn it into a .onnx file for web use, the model is complete and ready to be used for the Chrome Extension.
+
+The Chrome extension focuses on images on popular social media websites such as Reddit, Facebook, Instagram and more. All sites targeted are outlined in the manifest.json file as required by Google. The extension will look for all images that have been on screen long enough, fetch them, pass the bytes to the model, and depending on the model's confidence that an image is AI generated, will put a colorful outline on the image to visually indicate it is potentially fake.
+
+## Future Improvements
+
+Overall, the model isn't perfect and has many issues which all come down to the data pipeline. The data needs to be sorted better because simply splitting based on generator or specific categories both fail to be diverse enough for the model to properly learn. For example, the model will struggle with human faces and more than likely flag all human faces as AI-generated due to the abundance of fake faces provided in the training data. When splitting based on category like I tried to do in models/v1, the performance of the model was much worse. This may mean the model needs more time to train with more epochs, different learning rate, etc. but overall it was worse than the v0 model. IF I get the chance to come back and improve this project, I would focus my efforts on the data pipeline to help improve the model. The data is either super messy or unbalanced which hinders the model's ability to learn.
+
+I learned a lot from this project however, and it helped me understand using PyTorch, MLFlow, and the importance of data cleaning much more to get a well performing model.
